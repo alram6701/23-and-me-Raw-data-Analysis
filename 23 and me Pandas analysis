@@ -1,0 +1,288 @@
+import pandas as pd
+import re
+import matplotlib.pyplot as plt
+import numpy as np
+
+#SNPS matched
+genome = pd.read_csv("gene.txt", sep="\t", comment="#", header=None, na_values="--").dropna()
+genome.columns = ["rs", "chrom", "loci", "genotype"]
+genome.set_index("rs", inplace=True)
+
+genome.chrom = genome.chrom.astype(str)
+
+rsthing = genome.apply(
+    lambda row: row.name + f"({';'.join(row.genotype)})",
+    axis=1)
+
+genome.loc[:, "match_key"] = rsthing
+genome
+
+all_snps = pd.read_csv("all-snps.csv", index_col="snp")
+matches = genome.join(all_snps, on="match_key", how="inner")
+matches.to_csv("matchedsnps.csv")
+
+
+
+# MERGE and compare people
+genome_r = pd.read_csv("Jmatched-snps.csv",
+                       comment="#",
+                       index_col="match_key",
+                    na_values="--").dropna()
+
+genome_a = pd.read_csv("Amatched-snps.csv",
+                       comment="#",
+                       index_col="match_key",
+                         na_values="--",    
+                         ).dropna()
+
+different_r = genome_r.index.difference(genome_a.index)
+different_a = genome_a.index.difference(genome_r.index)
+same = genome_r.index.intersection(genome_a.index)
+
+common_ra = genome_a.loc[same, :]
+different_ra = pd.concat([
+    genome_a.loc[different_a, :],
+    genome_r.loc[different_r, :],
+    ])
+different_ra.loc[:, "person"] = different_ra.index.map(
+    lambda i: "abby" if i in genome_a.index else "ray"
+)
+
+
+print(different_ra)
+common_ra.to_csv("common_abby-jen.csv")
+different_ra.to_csv("different_abby-jen.csv")
+
+chrom = {k: y for k, y in genome.groupby('chrom')}
+chrom.keys()
+
+
+
+####PLAY RAW AND CHROMS
+rawgenome = pd.read_csv("Ray.txt", sep="\t", comment="#", dtype=str, na_values="--").dropna()
+rawgenome.columns = ["rs", "chrom", "loci", "genotype"]
+
+chrom=rawgenome.chrom.unique()
+
+
+genome = pd.read_csv("Raymatched-snps.csv", comment="#")
+genome.columns = ["rs", "chrom", "loci", "genotype", "match_key","Magnitude", "Repute", "Summary"]
+genome.sort_values(['rs','chrom'], ascending=[True,True])
+
+
+#rawgenome.to_csv("rawsnps.csv")
+sex="Male" if 'Y' in chrom else "Female"
+print(sex)
+
+yomama=rawgenome.loc[rawgenome['chrom']=='MT']
+print(yomama)
+
+yomutantmama=genome.loc[genome['chrom']=='MT']
+
+if yomutantmama.empty:
+    print("Dam yo mama healthy")
+else:
+    print("yo mama such a mutant...")
+
+#exclusive from DAD
+dad=rawgenome[rawgenome['chrom']=='Y']
+print(dad)
+len(dad)
+
+
+##CHROM AND SNP CHART
+Allnumberschrom = ['1', '2', '3', '4', '5',
+                   '6', '7', '8', '9', '10',
+                   '11', '12', '13', '14',
+                   '15', '16', '17', '18',
+                   '19', '20', '21', '22',
+                   'X', 'Y', 'MT']
+
+chrom_cat = pd.api.types.CategoricalDtype(categories=Allnumberschrom, ordered=True)
+rawgenome.chrom = rawgenome.chrom.astype(chrom_cat)
+
+
+rawgenome.sort_values('chrom')
+
+rawgenome["chrom"].value_counts()
+
+
+rs_per_chromosome_series = rawgenome.groupby('chrom')['rs'].count()
+rs_per_chromosome_series.columns = ['chrom', 'rs']
+
+plt.figure(figsize=(14,9))
+plt.bar( rs_per_chromosome_series.index, rs_per_chromosome_series.values, color='#0072BD')
+plt.title("SNPs in Chromosomes", fontsize=16)
+plt.xlabel("Chromosome", fontsize=14)
+plt.ylabel("SNPs", fontsize=14)
+plt.show()
+
+
+###FUN MATCHED SNPS STUFF
+from enum import Enum
+
+
+class EyeColor(Enum):
+    UNDEFINED = 0
+    BLUE = 1
+    GREEN = 2
+    BROWN = 3
+
+
+
+IntQ= genome.loc[genome['rs'].isin(['rs4680', 'rs1745575','rs1535','rs17070145'])]
+blood=genome.loc[genome['rs'].isin(['rs1058396','rs7853989'])]
+
+print(blood['Summary'])
+
+height=genome.loc[genome['match_key'] == 'rs1799971(A;A)']
+if height.empty:
+    print("shorter than average")
+else:
+    print("average height")
+
+eyes = EyeColor.UNDEFINED
+
+brown_eyes_pos = [['rs12913832(A;A)'], 
+                          ['rs12896399(G;G)'], 
+                          ['rs12913832(A;A)'],
+                          ['rs12913832(G;A)'], 
+                          ['rs16891982(C;C)'], 
+                          ['rs16891982(G;G)'], 
+                          ['rs6119471(G;G)']]
+
+genome_brown_eyes = pd.DataFrame(brown_eyes_pos, columns=["match_key"],dtype=str)
+
+genome_match_brown_eyes = pd.merge(left=genome, right=genome_brown_eyes,how='inner',
+                                          left_on=["match_key"], 
+                                          right_on=["match_key"])
+print(genome_match_brown_eyes)
+
+if genome_match_brown_eyes.shape[0] >= 1:
+    eyes = EyeColor.BROWN
+
+if eyes == EyeColor.BROWN:    
+    print('You have BROWN eyes')
+else:
+    print('You do not have BROWN eyes')
+
+
+
+blue_eye_pos =[['rs12913832(G;G)'],
+               ['rs7495174(A;A)'],
+                ['rs12896399(T;T)'], 
+                ['rs12896399(G,T)']]
+
+genome_blue_eyes = pd.DataFrame(blue_eye_pos, columns=["match_key"])
+
+genome_match_blue_eyes = pd.merge(left=genome, 
+                                          right=genome_blue_eyes, how='inner', 
+                                          left_on=["match_key"], 
+                                          right_on=["match_key"])
+
+print(genome_match_blue_eyes)
+
+if genome_match_blue_eyes.shape[0] >= 1:
+    eyes = EyeColor.BLUE
+
+if eyes == EyeColor.BLUE:    
+    print('You could have Blue eyes')
+else:
+    print('You do not have Blue eyes')
+
+green_eye_pos =[['rs12913832(A;A)'], 
+                   ['rs12913832(G;A)'], 
+                   ['rs12203592(T;T)'],
+                   ['rs16891982(C;C)']]
+genome_green_eyes = pd.DataFrame(green_eye_pos, columns=["match_key"])
+
+genome_match_green_eyes = pd.merge(left=genome, 
+                                          right=genome_green_eyes, how='inner', 
+                                          left_on=["match_key"], 
+                                          right_on=["match_key"])
+
+print(genome_match_green_eyes)
+
+if genome_match_green_eyes.shape[0] >= 1:
+    eyes = EyeColor.GREEN
+
+if eyes == EyeColor.GREEN:    
+    print('You could have green eyes')
+else:
+    print('You do not have green eyes')
+
+print(f"You have {eyes.name.lower()} eyes.")
+    
+def color_eyes(brown_eye, blue_eye, green_eye):
+    if brown_eye:
+        return "brown"
+    if green_eye:
+        return "green"
+    if blue_eye:
+        return "blue"
+    else:
+        return "blind....DUNDUNDUN"
+    
+#Traits 
+
+def color_eyes(brown_eye, blue_eye, green_eye):
+    if brown_eye:
+        return "brown"
+    if green_eye:
+        return "green"
+    if blue_eye:
+        return "blue"
+    else:
+        return "undefined"
+    
+
+eyes=[color_eyes(brown_eye, blue_eye, green_eye)]
+
+
+
+print(f"You are probably {sex} with {eyes} eye color.\n"
+      "Height related:\n"
+      f"{height.loc[:, ['rs', 'Summary']]}\n"
+      "intelligence: \n"
+      f"{IntQ['Summary']}")
+
+#TRAITS MORE SPECIFIC
+#ALCHOLISM
+alc=genome.loc[genome['match_key'] == 'rs1799971(A;A)']
+if alc.empty:
+    print("you have an increased risk of developing alcholism")
+else:
+    print("you do not have an increased risk of developing alcholism")
+
+
+#CANCER
+bad_genes = genome[genome.Repute == 'Bad']
+cancer_risk = bad_genes[bad_genes["Summary"].str.contains("cancer", na=False)]
+print (cancer_risk)
+len(cancer_risk)
+
+
+#dementia
+dementia=genome[genome["Summary"].str.contains("dementia",na=False)]
+print(dementia)
+
+#exclusive SNPS Sons
+son=genome[genome['chrom']=='Y']
+print(son)
+len(son)
+
+
+#gene catagory
+good_genes = genome[genome.Repute == 'Good']
+bad_genes = genome[genome.Repute == 'Bad']
+sig_genes = genome[genome.Magnitude > 3]
+
+print(sig_genes)
+
+
+#paths arguemtn thing for eyes funnnnnna
+
+
+
+
+#change color of cahrt based on data ooo fun make a human 
