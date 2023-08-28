@@ -1,5 +1,5 @@
 # Genetic-Parsing
-Genetic Insights from 23andMe Data Analysis: This repository contains Python code that processes 23andMe raw genomic data, performs SNP matching, and explores genetic traits.  Genetic traits like eye color, height, intelligence, and disease risks are determined from matched SNPs. 
+Genetic Insights from 23andMe Data Analysis: This repository contains Python code that processes 23andMe raw genomic data, performs SNP matching, and explores genetic traits.  Genetic traits like eye color, height, intelligence, and disease risks are determined from matched SNPs. You can also compare and contrast your DNA with others.
 **Instructions:**
 1. Download Raw Genomic Data: Download your raw genomic data from 23andMe. This data usually comes in a text or CSV file format.
 2. Download SNP Data from SNPedia: Download SNP data from SNPedia in a CSV format. This dataset contains information about SNPs and their associations with various traits.
